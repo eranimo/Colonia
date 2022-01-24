@@ -1,0 +1,48 @@
+[gd_resource type="Shader" format=2]
+
+[resource]
+code = "shader_type spatial;
+uniform sampler2D cell_heights;
+uniform sampler2D cell_colors;
+uniform float map_width;
+uniform float map_height;
+
+varying vec2 chunk_position;
+varying vec2 cell_position;
+
+float get_height(vec2 pos) {
+	vec4 texel = texelFetch(cell_heights, ivec2(int(pos.x), int(pos.y)), 0);
+	return texel.r;
+}
+
+void vertex() {
+	chunk_position = vec2(INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.y);
+	cell_position = vec2(
+		chunk_position.x + UV2.x,
+		chunk_position.y + UV2.y
+	);
+	int height;
+	if (UV == vec2(0, 0)) {
+		height = int(round((
+			get_height(cell_position) +
+			get_height(cell_position + vec2(-1, -1)) +
+			get_height(cell_position + vec2(1, -1)) +
+			get_height(cell_position + vec2(-1, 1)) +
+			get_height(cell_position + vec2(1, 1))
+		) / 5f));
+	} else {
+		height = int(round((
+			get_height(cell_position) +
+			get_height(cell_position + vec2(UV.x, 0)) +
+			get_height(cell_position + vec2(0, UV.y)) +
+			get_height(cell_position + UV)
+		) / 4f));
+	}
+	VERTEX.y = float(height) * 5f;
+}
+
+void fragment(){
+	vec4 texel = texelFetch(cell_colors, ivec2(int(cell_position.x), int(cell_position.y)), 0);
+	ALBEDO = texel.rgb;
+	NORMAL = normalize(cross(dFdx(VERTEX), dFdy(VERTEX)));
+}"
